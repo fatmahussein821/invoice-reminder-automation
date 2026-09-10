@@ -1,0 +1,199 @@
+{
+  "name": "INVOICE",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -624,
+        -48
+      ],
+      "id": "1fa54dc8-e7d0-4b2b-af84-58eea84715a2",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fd1da525-3550-487c-84fe-25597590878a",
+              "leftValue": "={{ $json.daysLeft }}",
+              "rightValue": 5,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            },
+            {
+              "id": "b6668fc5-7761-48d1-b262-1c96a4444c82",
+              "leftValue": "={{ $json.Status }}",
+              "rightValue": "=Unpaid",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        0,
+        -48
+      ],
+      "id": "0b14af42-17f2-435d-b186-ad78d5f1947a",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "list",
+          "cachedResultName": "فواتير",
+          "cachedResultUrl": "https://airtable.com/YOUR_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "Invoices",
+          "cachedResultUrl": "https://airtable.com/YOUR_AIRTABLE_BASE_ID/YOUR_AIRTABLE_TABLE_ID"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        -416,
+        -48
+      ],
+      "id": "09cab746-8352-4f9f-9e58-c995f49dddf0",
+      "name": "Search Invoice Records",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "YOUR_AIRTABLE_CREDENTIAL_ID",
+          "name": "YOUR_AIRTABLE_CREDENTIAL_NAME"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const record = item.json;\n  const fields = record.fields;\n  \n  const today = DateTime.now();\n  const dueDate = DateTime.fromISO(fields.DueDate);\n  const daysLeft = Math.ceil(dueDate.diff(today, 'days').days);\n  \n  let dueMessage;\n  if (daysLeft > 0) {\n    dueMessage = `خلال ${daysLeft} يوم`;\n  } else if (daysLeft === 0) {\n    dueMessage = `اليوم`;\n  } else {\n    dueMessage = `متأخرة منذ ${Math.abs(daysLeft)} يوم`;\n  }\n  \n  return {\n    json: {\n      id: record.id,\n      InvoiceID: fields.InvoiceID,\n      Customer: fields.Customer,\n      Email: fields.Email,\n      Amount: fields.Amount,\n      Status: fields.Status,\n      DueDate: fields.DueDate,\n      DueDateFormatted: dueDate.toFormat('dd-MM-yyyy'),\n      daysLeft: daysLeft,\n      dueMessage: dueMessage\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        -48
+      ],
+      "id": "df41a44b-e981-4ce4-8abd-2e4a23fe1871",
+      "name": "Calculate Invoice Due Status"
+    },
+    {
+      "parameters": {
+        "sendTo": "YOUR_RECIPIENT_EMAIL@example.com",
+        "subject": "=تذكير بفاتورتك المستحقة  {{ $json.dueMessage }}",
+        "emailType": "text",
+        "message": "=مرحبا {{ $json.Customer }}\nجنية {{ $json.Amount }} نود تذكيرك بان فاتورتك المستحقة بقيمة\nالمستحقة بتاريخ {{ $json.DueDateFormatted }}\nبرجاء السداد في اقرب وقت ممكن.",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        240,
+        -144
+      ],
+      "id": "8bc43123-e1b1-40b3-ade9-15b860f08c7c",
+      "name": "Send Invoice Payment Reminder",
+      "webhookId": "YOUR_N8N_WEBHOOK_ID_1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "YOUR_GMAIL_CREDENTIAL_NAME"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Search Invoice Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send Invoice Payment Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Invoice Records": {
+      "main": [
+        [
+          {
+            "node": "Calculate Invoice Due Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Invoice Due Status": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "YOUR_WORKFLOW_VERSION_ID",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_N8N_INSTANCE_ID"
+  },
+  "nodeGroups": [],
+  "id": "YOUR_WORKFLOW_ID",
+  "tags": []
+}
