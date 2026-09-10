@@ -22,12 +22,3 @@ A scheduled **n8n invoice follow-up workflow** that reads invoice records from A
 - Gmail
 - JavaScript and Luxon date calculations
 
-## Setup
-
-1. Import `INVOICE.json` into n8n.
-2. Select the Airtable base, invoice table, and credential.
-3. Configure the Gmail credential and recipient behavior.
-4. Review the due-date threshold and Arabic email copy.
-5. Test against sample records before activating the schedule.
-
-The workflow export contains placeholders for credentials, IDs, and recipient addresses; replace them inside n8n before activation.
